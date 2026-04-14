@@ -61,7 +61,7 @@ ROW_KEYS = [
 
 
 def _append_sync(credentials_path: str, spreadsheet_id: str, worksheet_title: str | None, data: dict[str, Any]) -> None:
-    path = Path(credentials_path)
+    path = Path(credentials_path).expanduser()
     if not path.is_file():
         raise FileNotFoundError(f"Нет файла ключей: {path}")
 

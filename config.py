@@ -28,7 +28,13 @@ _creds = (
     or os.getenv("GOOGLE_CREDENTIALS_FILE")
     or ""
 ).strip()
-GOOGLE_CREDENTIALS_PATH = Path(_creds) if _creds else (BASE / "credentials.json")
+# Относительный путь (например credentials.json) ищем в BASE (/home/container на Pterodactyl),
+# а не в cwd процесса — иначе gspread не находит файл.
+if _creds:
+    _p = Path(_creds)
+    GOOGLE_CREDENTIALS_PATH = _p if _p.is_absolute() else (BASE / _p)
+else:
+    GOOGLE_CREDENTIALS_PATH = BASE / "credentials.json"
 GOOGLE_SHEET_WORKSHEET = (os.getenv("GOOGLE_SHEET_WORKSHEET") or "").strip() or None
 
 PROXY = os.getenv("PROXY", "").strip() or None

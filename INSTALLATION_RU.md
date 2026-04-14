@@ -170,8 +170,8 @@ python app.py
 1. **`.env`** — в файловом менеджере сервера создай в **`/home/container/.env`** и вставь содержимое из `.env.example`, заполнив токены (VK, Ollama, Google и т.д.).  
    Код бота при старте ищет `.env` в `/home/container` — это как раз корень контейнера.
 
-2. **`credentials.json`** — ключ сервисного аккаунта Google **нельзя** класть в публичный Git. Загрузи файл через **File Manager** в **`/home/container/credentials.json`**.  
-   В `.env` должно быть: **`GOOGLE_APPLICATION_CREDENTIALS=credentials.json`** (путь относительно `/home/container`).
+2. **`credentials.json`** — ключ сервисного аккаунта Google **нельзя** класть в публичный Git. Загрузи файл через **File Manager** в **`/home/container/credentials.json`** (именно в корень сервера, рядом с `app.py`).  
+   В `.env` достаточно **`GOOGLE_APPLICATION_CREDENTIALS=credentials.json`** или **`GOOGLE_CREDENTIALS_FILE=credentials.json`** — бот сам ищет файл в **`/home/container`**, а не в «текущей папке» процесса.
 
 После этого нажми **Start** и смотри **Console** на ошибки (например, нет `.env`, неверный `VK_GROUP_ID`, таблица не расшарена на `client_email`).
 
