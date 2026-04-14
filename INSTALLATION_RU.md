@@ -180,7 +180,7 @@ python app.py
 | Переменная | Обязательно | Описание |
 |------------|-------------|----------|
 | `VK_GROUP_TOKEN` | Да | Ключ сообщества из настроек VK |
-| `VK_GROUP_ID` | Да | Числовой ID группы |
+| `VK_GROUP_ID` | Нет* | Числовой ID группы (для vkbottle 4.8+ в коде не используется, можно оставить для заметок) |
 | `OLLAMA_API_KEY` | Да для облака | Ключ с ollama.com |
 | `OLLAMA_BASE_URL` | Нет | По умолчанию `https://ollama.com` |
 | `OLLAMA_MODEL` | Нет | Имя модели |
@@ -190,6 +190,8 @@ python app.py
 | `PROXY` | Нет | Если нужен прокси для исходящих запросов |
 
 \* Без Google-переменных и файла ключей бот работает, но в таблицу не пишет.
+
+Дополнительно в `.env` понимаются **алиасы Google**: `GOOGLE_SHEET_ID` вместо `GOOGLE_SPREADSHEET_ID`, `GOOGLE_CREDENTIALS_FILE` вместо `GOOGLE_APPLICATION_CREDENTIALS`.
 
 ---
 

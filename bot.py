@@ -18,7 +18,6 @@ from config import (
     OLLAMA_API_KEY,
     OLLAMA_BASE_URL,
     OLLAMA_MODEL,
-    VK_GROUP_ID,
     VK_GROUP_TOKEN,
 )
 from keyboards_vk import (
@@ -63,10 +62,8 @@ KEYBOARD_MAP = {
     "priority": priority_kb,
 }
 
-bot = Bot(
-    token=VK_GROUP_TOKEN or "",
-    group_id=VK_GROUP_ID if VK_GROUP_ID else None,
-)
+# vkbottle 4.8+: только token; group_id в конструкторе Bot больше не передаётся
+bot = Bot(token=VK_GROUP_TOKEN or "")
 
 
 def _parse_payload(event: MessageEvent) -> dict:
