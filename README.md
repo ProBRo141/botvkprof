@@ -1,14 +1,12 @@
-# Профориентация — VK + Яндекс Таблицы (через Диск) + Ollama
+# Профориентация — VK + Google Таблицы + Ollama
 
-Бот для **ВКонтакте** (сообщество): анкета, рекомендации через **Ollama Cloud**, сохранение ответов в **CSV на Яндекс Диске** (файл открывается в **Яндекс Таблицах**).
-
-> У Яндекс Таблиц нет публичного REST API для ячеек; используется [API Яндекс Диска](https://yandex.ru/dev/disk/rest/) — бот дописывает строки в CSV.
+Бот для **ВКонтакте** (сообщество): анкета, рекомендации через **Ollama Cloud**, сохранение строк в **Google Таблицу** ([gspread](https://github.com/burnash/gspread) + сервисный аккаунт).
 
 ---
 
 ## Документация для начинающих
 
-**[INSTALLATION_RU.md](INSTALLATION_RU.md)** — пошаговая установка на Windows, настройка VK, Ollama, Яндекс Диска, запуск локально и на **Pterodactyl**.
+**[INSTALLATION_RU.md](INSTALLATION_RU.md)** — установка на Windows, VK, Ollama, Google Sheets, запуск локально и подробно **Pterodactyl** (переменные яйца, startup command).
 
 ---
 
@@ -19,30 +17,32 @@ python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
+# положи credentials.json (ключ сервисного аккаунта Google) в корень проекта
 # заполни .env (см. INSTALLATION_RU.md)
 python main.py
 ```
 
-На хостинге Pterodactyl: **App py file** — `app.py`, **Requirements** — `requirements.txt`, в корне сервера — файл `.env`.
+**Pterodactyl:** образ **Python 3.11**, **App py file** — `app.py`, **Requirements file** — `requirements.txt`, **Git Repo** — например `https://github.com/ProBRo141/career_bot_pterodactyl.git`. В корень сервера загрузи **`credentials.json`** и создай **`.env`**. Подробности — в [INSTALLATION_RU.md](INSTALLATION_RU.md#шаг-7-pterodactyl-панель-яйцо-python).
 
 ---
 
-## Репозиторий
+## Репозитории
 
-https://github.com/ProBRo141/botvkprof
+- Основной (пример для Pterodactyl): [github.com/ProBRo141/career_bot_pterodactyl](https://github.com/ProBRo141/career_bot_pterodactyl)
+- Зеркало/копия: [github.com/ProBRo141/botvkprof](https://github.com/ProBRo141/botvkprof)
 
 ---
 
 ## Переменные окружения
 
-См. таблицу в [INSTALLATION_RU.md](INSTALLATION_RU.md#переменные-env-шпаргалка) и файл `.env.example`.
+См. [INSTALLATION_RU.md](INSTALLATION_RU.md#переменные-env-шпаргалка) и `.env.example`.
 
 ---
 
 ## Стек
 
 - [vkbottle](https://github.com/vkbottle/vkbottle) — Long Poll, кнопки
-- `httpx` — Ollama и Яндекс Диск
-- Логика анкеты: `questions.py`, `validation.py`, `llm_service.py`
+- `httpx` — Ollama
+- `gspread` — Google Sheets
 
-Локальные файлы состояния: `vk_fsm_state.json`, `results.json` (в `.gitignore`).
+Локально на сервере: `vk_fsm_state.json`, `results.json` (в `.gitignore`).

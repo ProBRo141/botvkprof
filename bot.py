@@ -12,13 +12,14 @@ from datetime import datetime
 from vkbottle.bot import Bot, Message, MessageEvent
 
 from config import (
+    GOOGLE_CREDENTIALS_PATH,
+    GOOGLE_SHEET_WORKSHEET,
+    GOOGLE_SPREADSHEET_ID,
     OLLAMA_API_KEY,
     OLLAMA_BASE_URL,
     OLLAMA_MODEL,
     VK_GROUP_ID,
     VK_GROUP_TOKEN,
-    YANDEX_DISK_CSV_PATH,
-    YANDEX_DISK_TOKEN,
 )
 from keyboards_vk import (
     communication_kb,
@@ -39,7 +40,7 @@ from questions import QUESTIONS, QUESTION_ORDER
 from results_store import get_last_result, save_result as save_to_store
 from storage import JsonStorage
 from validation import get_clarify_message, is_too_short, normalize_work_format, validate_work_format
-from yandex_disk import save_result_disk
+from sheets import save_result_sheets
 
 _log_path = "/home/container/bot.log" if os.path.exists("/home/container") else "bot.log"
 logging.basicConfig(
@@ -288,11 +289,16 @@ async def send_result_and_save_impl(api, peer_id: int, user_id: int, data: dict,
         "ready_for_consultation": "да" if consultation == "yes" else "нет",
         "phone": data.get("phone", ""),
     }
-    if YANDEX_DISK_TOKEN:
+    if GOOGLE_SPREADSHEET_ID:
         try:
-            await save_result_disk(YANDEX_DISK_TOKEN, YANDEX_DISK_CSV_PATH, row)
+            await save_result_sheets(
+                str(GOOGLE_CREDENTIALS_PATH),
+                GOOGLE_SPREADSHEET_ID,
+                GOOGLE_SHEET_WORKSHEET,
+                row,
+            )
         except Exception as e:
-            logger.error("Yandex Disk save: %s", e)
+            logger.error("Google Sheets save: %s", e)
     save_to_store(
         user_id,
         {
