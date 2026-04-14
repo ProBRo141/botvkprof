@@ -55,6 +55,55 @@ logger = logging.getLogger(__name__)
 
 st = JsonStorage()
 
+
+def _is_outgoing(message: Message) -> bool:
+    """Сообщения, отправленные от имени сообщества (ответы бота), не обрабатываем — иначе путаница и лишние ответы."""
+    o = getattr(message, "out", 0)
+    return bool(o) if isinstance(o, int) else bool(o)
+
+
+def _storage_user_id(message: Message) -> int:
+    """
+    ID пользователя для FSM и results_store.
+    В личке «пользователь → сообщество» обычно from_id > 0; если VK отдаёт иначе — берём положительный peer_id.
+    """
+    fid = int(message.from_id or 0)
+    if fid > 0:
+        return fid
+    pid = int(message.peer_id or 0)
+    # ЛС (не беседа 2e9+): peer_id совпадает с id собеседника-пользователя
+    if 0 < pid < 2_000_000_000:
+        return pid
+    return fid or pid
+
+
+def _log_incoming(message: Message, where: str) -> None:
+    try:
+        logger.info(
+            "incoming[%s] peer=%s from=%s out=%s text=%r",
+            where,
+            message.peer_id,
+            message.from_id,
+            getattr(message, "out", None),
+            (message.text or "")[:120],
+        )
+    except Exception:
+        pass
+
+
+def _callback_user_id(event: MessageEvent) -> int:
+    uid = int(getattr(event, "user_id", None) or 0)
+    if uid > 0:
+        return uid
+    obj = getattr(event, "object", None)
+    if isinstance(obj, dict):
+        return int(obj.get("user_id") or 0)
+    if obj is not None:
+        v = getattr(obj, "user_id", None)
+        if v is not None:
+            return int(v)
+    return 0
+
 KEYBOARD_MAP = {
     "education": education_kb,
     "hours": hours_kb,
@@ -338,7 +387,17 @@ async def _do_generate(api, peer_id: int, user_id: int):
 
 @bot.on.message(text=["Старт", "старт", "/start", "Начать", "начать", "🚀 Старт"])
 async def cmd_start(message: Message):
-    uid = message.from_id
+    if _is_outgoing(message):
+        return
+    _log_incoming(message, "start")
+    uid = _storage_user_id(message)
+    if not uid:
+        logger.warning("cmd_start: uid=0 peer=%s from=%s", message.peer_id, message.from_id)
+        await message.answer(
+            "Не получилось определить твой id ВК. Напиши в этот диалог с личной страницы (не из-под другого сообщества).",
+            keyboard=main_menu_kb(),
+        )
+        return
     st.clear_data(uid)
     await message.answer(
         "Привет! Я помогу с профориентацией. Пройди анкету — получишь рекомендации и план на 14 дней.\n\n"
@@ -350,11 +409,16 @@ async def cmd_start(message: Message):
 
 @bot.on.message(text=["Перезапуск", "перезапуск", "/restart", "🔄 Перезапуск"])
 async def cmd_restart(message: Message):
+    if _is_outgoing(message):
+        return
     await cmd_start(message)
 
 
 @bot.on.message(text=["Помощь", "помощь", "/help", "❓ Помощь"])
 async def cmd_help(message: Message):
+    if _is_outgoing(message):
+        return
+    _log_incoming(message, "help")
     await message.answer(
         "Бот проводит профориентационную диагностику.\n"
         "Отвечай на вопросы — в конце получишь направления, причины, риски, первый шаг и план на 14 дней.\n"
@@ -366,7 +430,14 @@ async def cmd_help(message: Message):
 
 @bot.on.message(text=["Мой результат", "мой результат", "/myresult", "📋 Мой результат"])
 async def cmd_myresult(message: Message):
-    res = get_last_result(message.from_id)
+    if _is_outgoing(message):
+        return
+    _log_incoming(message, "myresult")
+    uid = _storage_user_id(message)
+    if not uid:
+        await message.answer("Не удалось определить профиль.", keyboard=main_menu_kb())
+        return
+    res = get_last_result(uid)
     if not res:
         await message.answer("Результатов пока нет. Нажми «Старт».", keyboard=main_menu_kb())
         return
@@ -378,15 +449,47 @@ async def cmd_myresult(message: Message):
 
 @bot.on.message(text=["⬇ Скрыть меню", "Скрыть меню"])
 async def cmd_hide(message: Message):
+    if _is_outgoing(message):
+        return
+    _log_incoming(message, "hide")
     await message.answer("Меню скрыто. Напиши «Старт».", keyboard=empty_keyboard())
 
 
 @bot.on.message()
 async def on_text(message: Message):
-    uid = message.from_id
-    if not message.text:
+    if _is_outgoing(message):
         return
-    text = message.text.strip()
+    _log_incoming(message, "text")
+    uid = _storage_user_id(message)
+    if not uid:
+        logger.warning("on_text: uid=0 peer=%s from=%s", message.peer_id, message.from_id)
+        await message.answer(
+            "Не получилось определить твой id ВК. Открой диалог с сообществом с личной страницы ВК.",
+            keyboard=main_menu_kb(),
+        )
+        return
+    raw = message.text
+    if not raw or not str(raw).strip():
+        await message.answer(
+            "Я понимаю текст и кнопки под полем ввода. Напиши сообщение текстом или нажми «Старт» на клавиатуре.",
+            keyboard=main_menu_kb(),
+        )
+        return
+    text = str(raw).strip()
+    tl = text.lower()
+    # Те же команды без учёта регистра (если не сработал точный text= у других хендлеров)
+    if tl in ("старт", "начать", "/start"):
+        await cmd_start(message)
+        return
+    if tl in ("перезапуск", "/restart"):
+        await cmd_start(message)
+        return
+    if tl in ("помощь", "/help"):
+        await cmd_help(message)
+        return
+    if tl in ("мой результат", "/myresult"):
+        await cmd_myresult(message)
+        return
     if text.startswith("/"):
         if text not in ("/start", "/restart", "/help", "/myresult"):
             await message.answer("Используй кнопки или /help", keyboard=main_menu_kb())
@@ -411,7 +514,11 @@ async def on_text(message: Message):
     u = st.get_user(uid)
     step = u.get("state")
     if not step:
-        await message.answer("Нажми «Старт».", keyboard=main_menu_kb())
+        await message.answer(
+            "Чтобы начать анкету, нажми кнопку «Старт» внизу экрана или напиши слово «Старт». "
+            "Если кнопок нет — открой клавиатуру: значок ⋮ у поля ввода → «Открыть клавиатуру».",
+            keyboard=main_menu_kb(),
+        )
         return
     if step == "done":
         await message.answer("Анкета завершена. «Перезапуск» — заново.", keyboard=main_menu_kb())
@@ -510,7 +617,14 @@ async def on_callback(event: MessageEvent):
     t = pl.get("t")
     api = event.ctx_api
     peer = event.peer_id
-    uid = event.user_id
+    uid = _callback_user_id(event)
+    if not uid:
+        logger.warning("callback: uid=0 peer=%s payload=%s", peer, _parse_payload(event))
+        try:
+            await event.show_snackbar("Ошибка: не определён пользователь")
+        except Exception:
+            pass
+        return
 
     async def snack(x: str):
         try:
