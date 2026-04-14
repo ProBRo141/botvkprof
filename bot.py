@@ -9,6 +9,7 @@ import os
 import re
 from datetime import datetime
 
+from vkbottle import GroupEventType
 from vkbottle.bot import Bot, Message, MessageEvent
 
 from config import (
@@ -503,7 +504,7 @@ async def on_text(message: Message):
         return
 
 
-@bot.on.message_event()
+@bot.on.raw_event(GroupEventType.MESSAGE_EVENT, dataclass=MessageEvent)
 async def on_callback(event: MessageEvent):
     pl = _parse_payload(event)
     t = pl.get("t")
