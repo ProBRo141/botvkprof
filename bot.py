@@ -615,6 +615,10 @@ async def on_text(message: Message):
 async def on_callback(event: MessageEvent):
     pl = _parse_payload(event)
     t = pl.get("t")
+    # Старые инлайн-клавиатуры: приоритет шёл как t:a → считался последним шагом QUESTION_ORDER и сразу шла генерация
+    if t == "a" and str(pl.get("s")) == "priority" and pl.get("v") is not None:
+        pl = {"t": "p", "v": pl.get("v")}
+        t = "p"
     api = event.ctx_api
     peer = event.peer_id
     uid = _callback_user_id(event)

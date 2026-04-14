@@ -66,10 +66,15 @@ def goal_kb(step: str) -> Keyboard:
     return kb
 
 
+def _prio(val: str) -> dict:
+    """Отдельный payload от _ans: иначе t:a на шаге priority считается «последний вопрос» и сразу запускает LLM."""
+    return {"t": "p", "v": val}
+
+
 def priority_kb(step: str) -> Keyboard:
     kb = Keyboard(inline=True)
     for val, txt in PRIORITY:
-        kb.add(Callback(txt, payload=_ans(step, val)))
+        kb.add(Callback(txt, payload=_prio(val)))
         kb.row()
     kb.add(Callback("← Назад", payload=_go("limits")))
     return kb
@@ -78,7 +83,7 @@ def priority_kb(step: str) -> Keyboard:
 def priority_with_done_kb(step: str) -> Keyboard:
     kb = Keyboard(inline=True)
     for val, txt in PRIORITY:
-        kb.add(Callback(txt, payload=_ans(step, val)))
+        kb.add(Callback(txt, payload=_prio(val)))
         kb.row()
     kb.add(Callback("Готово", payload={"t": "pd"}))
     kb.add(Callback("← Назад", payload=_go("limits")))
